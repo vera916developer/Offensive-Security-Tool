@@ -1,0 +1,50 @@
+# Configuración para auto-asignar labels basado en archivos modificados
+
+# Labels para tipos de archivos
+'🐍 python':
+  - '**/*.py'
+  - '**/requirements.txt'
+  - '**/Pipfile'
+  - '**/setup.py'
+
+'📚 documentation':
+  - '**/*.md'
+  - '**/docs/**'
+  - '**/*.rst'
+
+'🧪 tests':
+  - '**/test_*.py'
+  - '**/tests/**'
+  - '**/*_test.py'
+
+'🔧 config':
+  - '**/*.yml'
+  - '**/*.yaml'
+  - '**/*.json'
+  - '**/*.toml'
+  - '**/*.ini'
+  - '**/.env*'
+
+'🚀 ci/cd':
+  - '.github/**'
+  - '**/Dockerfile'
+  - '**/*.dockerfile'
+  - '**/docker-compose.yml'
+
+'🎨 frontend':
+  - '**/*.html'
+  - '**/*.css'
+  - '**/*.js'
+  - '**/*.tsx'
+  - '**/*.jsx'
+
+'🔒 security':
+  - '**/requirements.txt'
+  - '**/Pipfile.lock'
+  - '**/package-lock.json'
+
+'🐛 bug':
+  - any: ['**/fix/**', '**/bugfix/**', '**/hotfix/**']
+
+'✨ feature':
+  - any: ['**/feature/**', '**/feat/**']

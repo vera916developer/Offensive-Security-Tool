@@ -1,0 +1,152 @@
+name: 🔄 PR Automation
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: write
+
+jobs:
+  # Auto-asignar labels basado en archivos modificados
+  auto-label:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'opened' || github.event.action == 'synchronize'
+    steps:
+    - name: 📂 Checkout
+      uses: actions/checkout@v4
+      
+    - name: 🏷️ Auto Label PR
+      uses: actions/labeler@v4
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        configuration-path: .github/labeler.yml
+
+  # Verificar que el PR tenga descripción
+  check-pr-description:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'opened' || github.event.action == 'edited'
+    steps:
+    - name: ✅ Check PR Description
+      run: |
+        if [ -z "${{ github.event.pull_request.body }}" ]; then
+          echo "❌ PR description is empty!"
+          echo "::error::Please add a description to your PR"
+          exit 1
+        else
+          echo "✅ PR has description"
+        fi
+
+  # Auto-asignar al autor del PR
+  auto-assign-author:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'opened'
+    steps:
+    - name: 👤 Auto Assign Author
+      uses: actions/github-script@v6
+      with:
+        script: |
+          await github.rest.issues.addAssignees({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.payload.pull_request.number,
+            assignees: [context.payload.pull_request.user.login]
+          });
+
+
+  # Verificar tamaño del PR
+  check-pr-size:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'opened' || github.event.action == 'synchronize'
+    steps:
+    - name: 📏 Check PR Size
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const pr = context.payload.pull_request;
+          const additions = pr.additions;
+          const deletions = pr.deletions;
+          const changes = additions + deletions;
+          
+          let size = 'small';
+          let color = '0e8a16';
+          
+          if (changes > 1000) {
+            size = 'extra-large';
+            color = 'd93f0b';
+          } else if (changes > 500) {
+            size = 'large';
+            color = 'fbca04';
+          } else if (changes > 100) {
+            size = 'medium';
+            color = 'ff9500';
+          }
+          
+          await github.rest.issues.addLabels({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: pr.number,
+            labels: [`size/${size}`]
+          });
+          
+          if (changes > 500) {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: `⚠️ **Large PR detected!** This PR has ${changes} changes. Consider breaking it into smaller PRs for easier review.`
+            });
+          }
+
+  # Comentario de bienvenida para nuevos contributors
+  welcome-new-contributor:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'opened'
+    steps:
+    - name: 👋 Welcome New Contributor
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const { data: pullRequests } = await github.rest.pulls.list({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            state: 'all',
+            creator: context.payload.pull_request.user.login
+          });
+          
+          if (pullRequests.length === 1) {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: `👋 ¡Hola @${context.payload.pull_request.user.login}! 
+
+              ¡Gracias por tu primera contribución! 🎉 
+
+              Aquí tienes algunos tips:
+              - ✅ Asegúrate de que los tests pasen
+              - 📝 Revisa que tu PR tenga una buena descripción
+              - 🔍 Un maintainer revisará tu código pronto
+              
+              ¡Gracias por contribuir al proyecto! 🚀`
+            });
+          }
+
+  # Verificar convenciones de commits
+  check-commit-messages:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'opened' || github.event.action == 'synchronize'
+    steps:
+    - name: 📂 Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: 📝 Check Commit Messages
+      uses: wagoid/commitlint-github-action@v5
+      with:
+        configFile: .github/commitlint.config.js

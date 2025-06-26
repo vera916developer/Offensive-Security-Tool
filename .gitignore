@@ -1,0 +1,55 @@
+# VS Code specific settings
+.vscode/
+
+# Python bytecode
+*.py[cod]
+__pycache__/
+*.so
+
+# Virtual environment directories
+env/
+.venv/
+.env/
+
+# Pipenv and Poetry files
+*.lock
+pipfile.lock
+
+# Pytest
+.cache/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Coverage
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Logs and system files
+*.log
+*.pot
+*.gz
+*.zip
+*.tar
+*.tar.gz
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.*
+
+# Build files
+build/
+dist/
+*.egg-info/
+.eggs/

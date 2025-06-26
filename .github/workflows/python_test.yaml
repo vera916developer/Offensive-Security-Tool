@@ -1,0 +1,64 @@
+name: 🐍 Python Tests
+on:
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.txt'
+      - 'docs/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    # Check out the code from the repository
+    - name: 📂 Checkout Code
+      uses: actions/checkout@v4
+      
+    # Set up Python environment
+    - name: 🐍 Set up Python 3.13
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+        allow-prereleases: true
+        
+    # Cache pip dependencies for faster builds
+    - name: 💾 Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/Pipfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    # Install dependencies
+    - name: 📦 Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pipenv
+        # Verificar si existe Pipfile
+        if [ -f Pipfile ]; then
+          pipenv install --dev --deploy
+        else
+          echo "⚠️ Pipfile no encontrado, instalando dependencias básicas"
+          pip install pytest pytest-cov
+        fi
+        
+    # Run tests with pipenv if available, otherwise use python directly
+    - name: ✅ Run Tests
+      run: |
+        if [ -f Pipfile ]; then
+          pipenv run python -m pytest tests/ -v --cov=. --cov-report=xml
+        else
+          python -m pytest tests/ -v || python -m unittest discover -s tests -v
+        fi
+        
+    # Upload coverage reports (opcional)
+    - name: 📊 Upload Coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: false
