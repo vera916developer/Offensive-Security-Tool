@@ -5,6 +5,12 @@ on:
       - '**/*.md'
       - '**/*.txt'
       - 'docs/**'
+  push:
+    branches: [main, develop]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.txt'
+      - 'docs/**'
 
 permissions:
   contents: read
@@ -13,52 +19,102 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+      fail-fast: false
+      
     steps:
     # Check out the code from the repository
     - name: 📂 Checkout Code
       uses: actions/checkout@v4
       
     # Set up Python environment
-    - name: 🐍 Set up Python 3.13
+    - name: 🐍 Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
-        python-version: "3.13"
+        python-version: ${{ matrix.python-version }}
         allow-prereleases: true
         
     # Cache pip dependencies for faster builds
     - name: 💾 Cache pip dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/Pipfile.lock') }}
+        key: ${{ runner.os }}-python${{ matrix.python-version }}-pip-${{ hashFiles('**/Pipfile.lock', '**/requirements*.txt', '**/pyproject.toml') }}
         restore-keys: |
-          ${{ runner.os }}-pip-
+          ${{ runner.os }}-python${{ matrix.python-version }}-pip-
           
     # Install dependencies
     - name: 📦 Install Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pipenv
-        # Verificar si existe Pipfile
-        if [ -f Pipfile ]; then
+        
+        # Check for different dependency management systems
+        if [ -f pyproject.toml ] && grep -q "\[tool.poetry\]" pyproject.toml; then
+          echo "📝 Poetry project detected"
+          pip install poetry
+          poetry install --with dev
+        elif [ -f Pipfile ]; then
+          echo "📝 Pipenv project detected"
+          pip install pipenv
           pipenv install --dev --deploy
+        elif [ -f requirements-dev.txt ]; then
+          echo "📝 Installing from requirements-dev.txt"
+          pip install -r requirements-dev.txt
+        elif [ -f requirements.txt ]; then
+          echo "📝 Installing from requirements.txt"
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
         else
-          echo "⚠️ Pipfile no encontrado, instalando dependencias básicas"
+          echo "⚠️ No dependency file found, installing basic testing packages"
           pip install pytest pytest-cov
         fi
         
-    # Run tests with pipenv if available, otherwise use python directly
+    # Run linting (if available)
+    - name: 🔍 Run Linting
+      run: |
+        if command -v flake8 &> /dev/null; then
+          echo "Running flake8..."
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        fi
+        if command -v black &> /dev/null; then
+          echo "Checking code formatting with black..."
+          black --check .
+        fi
+      continue-on-error: true
+        
+    # Run tests
     - name: ✅ Run Tests
       run: |
-        if [ -f Pipfile ]; then
-          pipenv run python -m pytest tests/ -v --cov=. --cov-report=xml
+        if [ -f pyproject.toml ] && grep -q "\[tool.poetry\]" pyproject.toml; then
+          poetry run python -m pytest tests/ -v --cov=. --cov-report=xml --cov-report=term-missing
+        elif [ -f Pipfile ]; then
+          pipenv run python -m pytest tests/ -v --cov=. --cov-report=xml --cov-report=term-missing
         else
-          python -m pytest tests/ -v || python -m unittest discover -s tests -v
+          # Try pytest first, fallback to unittest
+          if python -m pytest --version &> /dev/null; then
+            python -m pytest tests/ -v --cov=. --cov-report=xml --cov-report=term-missing
+          else
+            echo "pytest not available, using unittest"
+            python -m unittest discover -s tests -v
+          fi
         fi
         
-    # Upload coverage reports (opcional)
+    # Upload coverage reports
     - name: 📊 Upload Coverage to Codecov
-      uses: codecov/codecov-action@v3
+      if: matrix.python-version == '3.11'  # Only upload once
+      uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
         fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
+        
+    # Comment PR with coverage (optional)
+    - name: 💬 Coverage Comment
+      if: github.event_name == 'pull_request' && matrix.python-version == '3.11'
+      uses: py-cov-action/python-coverage-comment-action@v3
+      with:
+        GITHUB_TOKEN: ${{ github.token }}
+        MINIMUM_GREEN: 80
+        MINIMUM_ORANGE: 60
