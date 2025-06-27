@@ -2,43 +2,48 @@ repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
-    -   id: trailing-whitespace
-    -   id: end-of-file-fixer
-    -   id: check-yaml
-    -   id: debug-statements
-    -   id: double-quote-string-fixer
+    -   id: no-commit-to-branch
+        args: ['--branch', 'develop', '--branch', 'main']
+    -   id: pretty-format-json
+        args: ['--autofix']
     -   id: name-tests-test
-    -   id: requirements-txt-fixer
--   repo: https://github.com/asottile/setup-cfg-fmt
-    rev: v2.7.0
-    hooks:
-    -   id: setup-cfg-fmt
+        args: ['--django', '--unittest']
+    -   id: end-of-file-fixer
+    -   id: double-quote-string-fixer
+    -   id: check-yaml
+    -   id: check-merge-conflict
+    -   id: debug-statements
 -   repo: https://github.com/asottile/reorder-python-imports
     rev: v3.14.0
     hooks:
     -   id: reorder-python-imports
+        files: ^src/
         exclude: ^(pre_commit/resources/|testing/resources/python3_hooks_repo/)
-        args: [--py39-plus, --add-import, 'from __future__ import annotations']
+        args: [--py313-plus, --add-import, 'from __future__ import annotations']
 -   repo: https://github.com/asottile/add-trailing-comma
     rev: v3.1.0
     hooks:
     -   id: add-trailing-comma
+        args: [--py36-plus]
 -   repo: https://github.com/asottile/pyupgrade
     rev: v3.19.1
     hooks:
     -   id: pyupgrade
-        args: [--py39-plus]
+        args: [--py313-plus]
 -   repo: https://github.com/hhatto/autopep8
     rev: v2.3.1
     hooks:
     -   id: autopep8
+        args: [--max-line-length=88, --aggressive, --aggressive]
 -   repo: https://github.com/PyCQA/flake8
     rev: 7.1.1
     hooks:
     -   id: flake8
+        args: [--max-line-length=88, --extend-ignore=E203,W503]
 -   repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.14.1
     hooks:
     -   id: mypy
         additional_dependencies: [types-pyyaml]
         exclude: ^testing/resources/
+        args: [--ignore-missing-imports, --show-error-codes]

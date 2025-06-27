@@ -54,6 +54,7 @@ git clone git@github.com:vera916developer/Offensive-Security-Tool.git
 cd offensive_security_tool
 pip install pipenv
 pipenv install
+pipenv shell
 ```
 ## 🔐 Pre-commit Hooks
 Activa los hooks de pre-commit para asegurar calidad del código:
@@ -64,11 +65,20 @@ pre-commit run --all-file
 ```
 
 Incluye validaciones con:
-- black
-- isort
+- don't commit to branch
+- pretty format json
+- python tests naming
+- fix end of files
+- fix double quoted strings
+- check yaml
+- check for merge conflicts
+- debug statements (python)
+- Reorder python imports
+- Add trailing commas
+- pyupgrade
+- autopep8
 - flake8
-- trailing-whitespace
-- end-of-file-fixer
+- mypy
 
 ## 🧪 Ejemplo de Uso
 ```py
